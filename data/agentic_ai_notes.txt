@@ -1,0 +1,85 @@
+Title: Agentic AI vs Generative AI - Structured Notes
+
+Section 1: What is Generative AI?
+
+Generative AI refers to artificial intelligence systems that can generate new content such as text, images, code, audio, or video. These systems are trained on large datasets and learn patterns in the data. When prompted, they generate outputs that resemble the data they were trained on.
+
+Examples of generative AI systems include large language models (LLMs) like GPT models that generate human-like text. Generative AI is typically reactive. It responds to prompts but does not independently plan or execute multi-step goals.
+
+Key Characteristics of Generative AI:
+- Prompt-based output
+- Pattern recognition and content creation
+- No autonomous goal execution
+- Stateless unless memory is explicitly added
+
+
+Section 2: What is Agentic AI?
+
+Agentic AI refers to AI systems that can autonomously plan, make decisions, and execute tasks to achieve goals. Instead of simply generating responses, agentic AI systems can reason about actions, use tools, call APIs, and interact with environments.
+
+Agentic AI systems typically:
+- Break down complex goals into smaller tasks
+- Decide which tools to use
+- Execute multi-step workflows
+- Adapt based on intermediate results
+
+Agentic AI often combines LLMs with tools, memory, and planning frameworks.
+
+
+Section 3: AI Agents vs AI Assistants
+
+AI assistants are typically reactive systems that answer questions or perform simple commands. AI agents are proactive and goal-driven. They can take initiative, perform multiple steps, and adjust their behavior dynamically.
+
+Difference Summary:
+- Assistant: Responds to user queries.
+- Agent: Acts on behalf of the user to accomplish goals.
+
+
+Section 4: Real-World Example
+
+Example Scenario: Research Report Generation
+
+Generative AI:
+User asks: "Write a summary about renewable energy."
+System generates text.
+
+Agentic AI:
+User asks: "Prepare a research report on renewable energy trends."
+Agent:
+1. Searches the web
+2. Collects data
+3. Summarizes findings
+4. Organizes into structured sections
+5. Produces final report
+
+This multi-step workflow demonstrates autonomy.
+
+
+Section 5: Limitations and Risks
+
+Generative AI Risks:
+- Hallucinations
+- Bias in training data
+- Lack of long-term planning
+
+Agentic AI Risks:
+- Incorrect decision-making
+- Tool misuse
+- Security concerns
+- Over-automation risks
+
+Careful design and monitoring are necessary for production systems.
+
+
+Section 6: When to Use Which
+
+Use Generative AI when:
+- You need content creation
+- You need summaries
+- You need translations
+
+Use Agentic AI when:
+- You need automation
+- You need multi-step reasoning
+- You need integration with tools
+- You need goal completion rather than simple responses
