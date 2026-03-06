@@ -1,28 +1,37 @@
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-import os
+# vectorstore/faiss_store.py
 
+import faiss
+import pickle
+from typing import List
+from langchain_core.documents import Document
+import numpy as np
 
-def build_faiss_index():
-    # 1️⃣ Load document
-    loader = TextLoader("data/sample.txt")
-    documents = loader.load()
+class FaissRetriever:
+    """
+    Load FAISS index and perform semantic search for a query embedding.
+    """
 
-    # 2️⃣ Split into chunks
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=300,
-        chunk_overlap=50
-    )
-    chunks = splitter.split_documents(documents)
+    def __init__(self, embedding_service, index_path: str = "vectorstore/faiss.index", mapping_path: str = "vectorstore/doc_mapping.pkl"):
+        self.embedding_service = embedding_service
 
-    # 3️⃣ Create embeddings
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+        # Load FAISS index
+        self.index = faiss.read_index(index_path)
 
-    # 4️⃣ Create FAISS index
-    vectorstore = FAISS.from_documents(chunks, embeddings)
+        # Load doc mapping
+        with open(mapping_path, "rb") as f:
+            self.doc_mapping: List[Document] = pickle.load(f)
 
-    return vectorstore
+    def retrieve(self, query: str, top_k: int = 5) -> List[Document]:
+        """
+        Retrieve top-k most relevant document chunks for a query.
+        """
+        # Embed the query
+        query_embedding = self.embedding_service.get_query_embedding(query)
+        query_vector = np.array([query_embedding]).astype('float32')
+
+        # Search FAISS
+        distances, indices = self.index.search(query_vector, top_k)
+
+        # Map indices to Document objects
+        results = [self.doc_mapping[idx] for idx in indices[0] if idx < len(self.doc_mapping)]
+        return results
