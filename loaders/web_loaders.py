@@ -1,9 +1,10 @@
 # loaders/web_loader.py
+
 import os
+from bs4 import SoupStrainer
+from langchain_community.document_loaders import WebBaseLoader
 
 os.environ["USER_AGENT"] = "Mozilla/5.0 (X11; Linux x86_64)"
-
-from langchain_community.document_loaders import WebBaseLoader
 
 URLS = [
     "https://www.ibm.com/think/topics/agentic-ai-vs-generative-ai",
@@ -15,11 +16,23 @@ URLS = [
 def load_web_documents():
     documents = []
 
+    # Only extract useful HTML sections
+    strainer = SoupStrainer(["article", "main", "section", "p"])
+
     for url in URLS:
         print(f"Loading: {url}")
-        loader = WebBaseLoader(url)
-        docs = loader.load()  # returns a list of Document objects
+
+        loader = WebBaseLoader(
+            web_paths=(url,),
+            bs_kwargs={"parse_only": strainer}
+        )
+
+        docs = loader.load()
+
+        # Clean excessive whitespace
+        for doc in docs:
+            doc.page_content = " ".join(doc.page_content.split())
+
         documents.extend(docs)
 
     return documents
-
