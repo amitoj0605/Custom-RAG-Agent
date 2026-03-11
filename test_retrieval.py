@@ -1,17 +1,33 @@
-from agent.generate_query_or_respond import generate_query_or_respond
+from agent.grade_documents import grade_documents
+from langchain_core.messages import convert_to_messages
 
-state = {
-    "messages": [
-        {"role": "user", "content": "hello"}
-    ]
+input_state = {
+    "messages": convert_to_messages(
+        [
+            {
+                "role": "user",
+                "content": "What is agentic AI?"
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": "1",
+                        "name": "retriever_tool",
+                        "args": {"query": "agentic AI"}
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "content": "Agentic AI refers to AI systems that can autonomously plan, reason, and take actions.",
+                "tool_call_id": "1"
+            }
+        ]
+    )
 }
 
-result = generate_query_or_respond(state)
+result = grade_documents(input_state)
 
-message = result["messages"][0]
-
-print("\nMessage Content:")
-print(message.content)
-
-print("\nTool Calls:")
-print(message.tool_calls)
+print(result)
