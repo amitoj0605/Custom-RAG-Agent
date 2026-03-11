@@ -1,8 +1,17 @@
-from agent.retriever_tool import retriever_tool
+from agent.generate_query_or_respond import generate_query_or_respond
 
-query = "What is agentic AI?"
+state = {
+    "messages": [
+        {"role": "user", "content": "hello"}
+    ]
+}
 
-result = retriever_tool.invoke({"query": query})
+result = generate_query_or_respond(state)
 
-print("Top relevant chunks:\n")
-print(result)
+message = result["messages"][0]
+
+print("\nMessage Content:")
+print(message.content)
+
+print("\nTool Calls:")
+print(message.tool_calls)
