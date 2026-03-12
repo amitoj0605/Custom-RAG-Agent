@@ -6,7 +6,7 @@ for chunk in graph.stream(
         "messages": [
             {
                 "role": "user",
-                "content": "What is Agentic AI?"
+                "content": "Summarize the agentic AI articles in the dataset"
             }
         ]
     }
