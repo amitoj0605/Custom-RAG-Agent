@@ -1,39 +1,22 @@
-# test_generate_answer.py
-
-from agent.generate_answer import generate_answer
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from agent.graph import graph
 
 
-input_state = {
-    "messages": [
+for chunk in graph.stream(
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "What is Agentic AI?"
+            }
+        ]
+    }
+):
 
-        HumanMessage(
-            content="What is Agentic AI?"
-        ),
+    for node, update in chunk.items():
 
-        AIMessage(
-            content="",
-            tool_calls=[
-                {
-                    "id": "1",
-                    "name": "retrieve_documents",
-                    "args": {"query": "agentic ai definition"},
-                }
-            ],
-        ),
+        print("Update from node:", node)
 
-        ToolMessage(
-            content="Agentic AI refers to artificial intelligence systems that can autonomously plan, reason, and take actions to achieve goals. These systems combine large language models with tools, memory, and decision-making capabilities.",
-            tool_call_id="1",
-        ),
-    ]
-}
+        if "messages" in update:
+            update["messages"][-1].pretty_print()
 
-
-if __name__ == "__main__":
-
-    result = generate_answer(input_state)
-
-    print("\nGenerated Answer:\n")
-
-    result["messages"][-1].pretty_print()
+        print("\n\n")
