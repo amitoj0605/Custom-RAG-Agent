@@ -7,7 +7,7 @@ from agent.retriever_tool import retriever_tool
 
 # Initialize LLM
 response_model = ChatOllama(
-    model="qwen2.5",
+    model="qwen2.5:7b",
     temperature=0
 )
 

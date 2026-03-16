@@ -1,71 +1,23 @@
-# agent/grade_documents.py
+from utils.logger import log
 
-from typing import Literal
-from pydantic import BaseModel, Field
-from langgraph.graph import MessagesState
-from langchain_ollama import ChatOllama
+def grade_documents(state):
 
+    log("Grading retrieved documents (fast heuristic)")
 
-GRADE_PROMPT = """
-You are a grader assessing relevance of a retrieved document to a user question.
+    messages = state["messages"]
 
-Retrieved Document:
-{context}
+    # question is always first message
+    question = messages[0].content.lower()
 
-User Question:
-{question}
+    # retriever output is last message
+    context = messages[-1].content.lower()
 
-If the document contains keyword(s) or semantic meaning related to the question,
-grade it as relevant.
+    score = sum(word in context for word in question.split())
 
-Give a binary score 'yes' or 'no'.
-"""
-
-
-class GradeDocuments(BaseModel):
-    """Binary relevance score for retrieved documents."""
-
-    binary_score: str = Field(
-        description="Relevance score: 'yes' if relevant, 'no' if not relevant"
-    )
-
-
-# grading model
-grader_model = ChatOllama(
-    model="qwen2.5",
-    temperature=0
-)
-
-
-def grade_documents(
-    state: MessagesState,
-) -> Literal["generate_answer", "rewrite_question"]:
-    """
-    Determine whether retrieved documents are relevant.
-    """
-
-    print("---GRADING DOCUMENTS---")
-
-    question = state["messages"][0].content
-    context = state["messages"][-1].content
-
-    prompt = GRADE_PROMPT.format(
-        question=question,
-        context=context
-    )
-
-    response = grader_model.with_structured_output(
-        GradeDocuments
-    ).invoke(
-        [{"role": "user", "content": prompt}]
-    )
-
-    score = response.binary_score
-
-    if score == "yes":
-        print("---DOCUMENTS RELEVANT---")
-        return "generate_answer"
-
+    if score >= 2:
+        log("Documents considered relevant")
     else:
-        print("---DOCUMENTS NOT RELEVANT---")
-        return "rewrite_question"
+        log("Documents weakly relevant but passing")
+
+    # return state unchanged
+    return {"messages": messages}

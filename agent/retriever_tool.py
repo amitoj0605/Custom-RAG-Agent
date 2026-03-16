@@ -1,32 +1,45 @@
-# agent/retriever_tool.py
+import time
 
 from langchain.tools import tool
+
 from vectorstore.faiss_store import FaissRetriever
 from embeddings.ollama_embeddings import EmbeddingService
 
-# Initialize embedding service
-embedding_service = EmbeddingService()
+from utils.logger import log
 
-# Load FAISS retriever (index already built and saved)
+
+embedding_service = EmbeddingService()
 retriever = FaissRetriever(embedding_service)
 
-# Define retriever tool
-@tool
-def retriever_tool(query: str) -> str:
-    """Search the knowledge base and return relevant information."""
 
-    docs = retriever.retrieve(query, top_k=5)
+@tool
+def retriever_tool(query: str):
+    """
+    Search the knowledge base and return relevant document chunks.
+    """
+
+    log("Retriever tool invoked")
+
+    start = time.time()
+
+    docs = retriever.retrieve(query, top_k=2)
+
+    retrieval_time = time.time() - start
+
+    log(f"Retrieved {len(docs)} documents")
+    log(f"Retrieval latency: {retrieval_time:.2f}s")
 
     cleaned_chunks = []
 
-    for doc in docs:
-        text = doc.page_content
+    for i, doc in enumerate(docs):
 
-        # remove excessive whitespace and newlines
-        text = " ".join(text.split())
+        text = " ".join(doc.page_content.split())[:400]
+
+        log(f"Chunk {i+1} retrieved")
 
         cleaned_chunks.append(text)
 
-    return "\n\n".join(cleaned_chunks)
-# Export tool for agent usage
-retriever_tool = retriever_tool
+    return {
+        "chunks": cleaned_chunks,
+        "text": "\n\n".join(cleaned_chunks)
+    }
