@@ -1,23 +1,347 @@
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from agent.graph import graph as app
+from langchain_ollama import ChatOllama
+from utils.logger import log
+import time
 
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
 
 st.set_page_config(
-    page_title="Agentic RAG Assistant",
-    page_icon="🤖",
-    layout="wide"
+    page_title="AgentRAG",
+    page_icon="⬡",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # -----------------------------
-# TITLE
+# CUSTOM CSS — Dark terminal/agentic theme
 # -----------------------------
 
-st.title("🤖 Agentic RAG Assistant")
-st.caption("Ask questions about Generative AI, RAG systems, and AI agents.")
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap');
+
+/* ── Base ── */
+html, body, [data-testid="stApp"] {
+    background-color: #0a0a0f;
+    color: #e2e8f0;
+    font-family: 'Syne', sans-serif;
+}
+
+/* ── Hide default streamlit elements ── */
+#MainMenu, footer, header { visibility: hidden; }
+[data-testid="stDecoration"] { display: none; }
+
+/* ── Force sidebar always visible — hide collapse arrow button ── */
+[data-testid="stSidebarCollapseButton"] { display: none !important; }
+[data-testid="stSidebarContent"] { display: block !important; }
+section[data-testid="stSidebar"] { 
+    transform: none !important;
+    min-width: 280px !important;
+    width: 280px !important;
+}
+
+/* ── Expander — Terminal Logs ── */
+[data-testid="stSidebar"] [data-testid="stExpander"] {
+    background: #020207 !important;
+    border: 1px solid #1e293b !important;
+    border-radius: 8px !important;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    color: #6366f1 !important;
+    padding: 8px 12px !important;
+    background: transparent !important;
+    border: none !important;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
+    color: #a5b4fc !important;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary svg {
+    fill: #6366f1 !important;
+}
+
+/* ── Main container ── */
+[data-testid="stAppViewContainer"] {
+    background: #0a0a0f;
+}
+[data-testid="stMain"] {
+    background: #0a0a0f;
+}
+
+/* ── HEADER BANNER ── */
+.agent-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 28px 8px 12px 8px;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 24px;
+}
+.agent-logo {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 24px rgba(99,102,241,0.4);
+    flex-shrink: 0;
+}
+.agent-title-block { display: flex; flex-direction: column; gap: 2px; }
+.agent-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #a5b4fc, #e2e8f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+}
+.agent-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #6366f1;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.agent-status-pill {
+    margin-left: auto;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.3);
+    color: #4ade80;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+
+/* ── Chat messages ── */
+[data-testid="stChatMessage"] {
+    background: transparent !important;
+    border: none !important;
+    padding: 8px 0 !important;
+}
+
+/* User bubble */
+[data-testid="stChatMessage"][data-testid*="user"] .stMarkdown,
+.stChatMessage:has([data-testid="chatAvatarIcon-user"]) [data-testid="stMarkdownContainer"] {
+    background: #1e1b4b;
+    border: 1px solid #312e81;
+    border-radius: 16px 16px 4px 16px;
+    padding: 12px 16px;
+}
+
+/* ── Chat input ── */
+[data-testid="stChatInput"] {
+    background: #111827 !important;
+    border: 1px solid #374151 !important;
+    border-radius: 12px !important;
+    font-family: 'Syne', sans-serif !important;
+}
+[data-testid="stChatInput"]:focus-within {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.2) !important;
+}
+[data-testid="stChatInputSubmitButton"] svg {
+    fill: #6366f1 !important;
+}
+
+/* ── Status widget ── */
+[data-testid="stStatus"] {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+    border-radius: 10px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 12px !important;
+    color: #94a3b8 !important;
+}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: #070710 !important;
+    border-right: 1px solid #1e293b !important;
+}
+[data-testid="stSidebar"] * {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Sidebar header ── */
+.sidebar-header {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #6366f1;
+    padding: 8px 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sidebar-dot {
+    width: 6px; height: 6px;
+    background: #6366f1;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #6366f1;
+    animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ── Log terminal box ── */
+.log-terminal {
+    background: #020207;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: #4ade80;
+    line-height: 1.7;
+    max-height: 420px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+.log-terminal .log-time { color: #475569; }
+.log-terminal .log-msg  { color: #4ade80; }
+
+/* ── Clear button ── */
+[data-testid="stSidebar"] button {
+    background: #1e1b4b !important;
+    border: 1px solid #312e81 !important;
+    color: #a5b4fc !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    transition: all 0.2s !important;
+}
+[data-testid="stSidebar"] button:hover {
+    background: #312e81 !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 12px rgba(99,102,241,0.3) !important;
+}
+
+/* ── Divider ── */
+hr {
+    border-color: #1e293b !important;
+    margin: 12px 0 !important;
+}
+
+/* ── Stats row ── */
+.stats-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.stat-chip {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 10px;
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+    flex: 1;
+    text-align: center;
+}
+.stat-chip span {
+    display: block;
+    color: #a5b4fc;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ── Welcome screen ── */
+.welcome-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    gap: 16px;
+}
+.welcome-hex {
+    font-size: 52px;
+    filter: drop-shadow(0 0 20px rgba(99,102,241,0.6));
+    animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-10px); }
+}
+.welcome-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+.welcome-desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #475569;
+    max-width: 400px;
+    line-height: 1.8;
+}
+.suggestion-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+.suggestion-chip {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #64748b;
+    cursor: default;
+}
+.suggestion-chip:hover {
+    border-color: #6366f1;
+    color: #a5b4fc;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------
+# CACHED RESOURCES
+# -----------------------------
+
+@st.cache_resource
+def load_graph():
+    from agent.graph import graph
+    return graph
+
+@st.cache_resource
+def load_streaming_llm():
+    return ChatOllama(
+        model="qwen2.5:1.5b",
+        temperature=0,
+        num_predict=150,
+    )
+
+app = load_graph()
+streaming_llm = load_streaming_llm()
 
 # -----------------------------
 # SESSION STATE
@@ -25,73 +349,189 @@ st.caption("Ask questions about Generative AI, RAG systems, and AI agents.")
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-
 if "debug_logs" not in st.session_state:
     st.session_state.debug_logs = []
+if "query_count" not in st.session_state:
+    st.session_state.query_count = 0
+if "retrieval_count" not in st.session_state:
+    st.session_state.retrieval_count = 0
 
 # -----------------------------
-# SIDEBAR (DEBUG PANEL)
+# SIDEBAR
 # -----------------------------
 
 with st.sidebar:
 
-    st.header("⚙️ Debug Panel")
+    st.markdown('<div class="sidebar-header"><div class="sidebar-dot"></div>AGENT MONITOR</div>', unsafe_allow_html=True)
 
-    if st.button("Clear Chat"):
+    # Stats chips
+    st.markdown(f"""
+    <div class="stats-row">
+        <div class="stat-chip"><span>{st.session_state.query_count}</span>Queries</div>
+        <div class="stat-chip"><span>{st.session_state.retrieval_count}</span>Retrievals</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("⟳  Clear Session"):
         st.session_state.chat_history = []
         st.session_state.debug_logs = []
+        st.session_state.query_count = 0
+        st.session_state.retrieval_count = 0
         st.rerun()
 
     st.divider()
 
-    st.subheader("Logs")
+    st.markdown('<p style="font-family:JetBrains Mono,monospace;font-size:11px;color:#6366f1;letter-spacing:2px;text-transform:uppercase;margin:4px 0 8px 0;">📋 Terminal Logs</p>', unsafe_allow_html=True)
+    log_placeholder = st.empty()
 
-    for log in st.session_state.debug_logs[-20:]:
-        st.text(log)
+def render_logs():
+    """Render logs as styled terminal HTML."""
+    logs = st.session_state.debug_logs[-40:]
+    if not logs:
+        html = '<div class="log-terminal" style="color:#334155;">// no logs yet</div>'
+    else:
+        lines = ""
+        for entry in logs:
+            # Split [HH:MM:SS] from message
+            if entry.startswith("[") and "]" in entry:
+                ts = entry[:10]
+                msg = entry[11:]
+                lines += f'<span class="log-time">{ts}</span> <span class="log-msg">{msg}</span>\n'
+            else:
+                lines += f'<span class="log-msg">{entry}</span>\n'
+        html = f'<div class="log-terminal">{lines}</div>'
+    log_placeholder.markdown(html, unsafe_allow_html=True)
+
+render_logs()
 
 # -----------------------------
-# DISPLAY CHAT HISTORY
+# HEADER
 # -----------------------------
 
-for role, message in st.session_state.chat_history:
-
-    with st.chat_message(role):
-        st.markdown(message)
+st.markdown("""
+<div class="agent-header">
+    <div class="agent-logo">⬡</div>
+    <div class="agent-title-block">
+        <div class="agent-title">AgentRAG</div>
+        <div class="agent-subtitle">Retrieval-Augmented Intelligence</div>
+    </div>
+    <div class="agent-status-pill">● ONLINE</div>
+</div>
+""", unsafe_allow_html=True)
 
 # -----------------------------
-# USER INPUT
+# HELPER: log to terminal + UI
 # -----------------------------
 
-prompt = st.chat_input("Ask a question...")
+def ui_log(message: str):
+    entry = log(message)
+    st.session_state.debug_logs.append(entry)
+    render_logs()  # update sidebar live after every log
+
+# -----------------------------
+# CHAT HISTORY or WELCOME SCREEN
+# -----------------------------
+
+if not st.session_state.chat_history:
+    st.markdown("""
+    <div class="welcome-wrap">
+        <div class="welcome-hex">⬡</div>
+        <div class="welcome-title">What do you want to know?</div>
+        <div class="welcome-desc">
+            I retrieve answers from your knowledge base using FAISS vector search
+            and local LLMs. No cloud. No data leaving your machine.
+        </div>
+        <div class="suggestion-row">
+            <div class="suggestion-chip">What is agentic AI?</div>
+            <div class="suggestion-chip">How does RAG work?</div>
+            <div class="suggestion-chip">Agentic vs Generative AI</div>
+            <div class="suggestion-chip">What are AI agents?</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    for role, message in st.session_state.chat_history:
+        with st.chat_message(role):
+            st.markdown(message)
+
+# -----------------------------
+# USER INPUT & STREAMING RESPONSE
+# -----------------------------
+
+prompt = st.chat_input("Ask anything about your knowledge base...")
 
 if prompt:
 
-    # display user message
+    # Clear welcome screen by adding to history
     st.session_state.chat_history.append(("user", prompt))
+    st.session_state.query_count += 1
 
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # run agent
-    with st.spinner("Agent thinking..."):
-
-        result = app.invoke({
-            "messages": [HumanMessage(content=prompt)]
-        })
-
-    # extract final AI response
-    ai_message = None
-
-    for msg in result["messages"]:
-        if isinstance(msg, AIMessage):
-            ai_message = msg.content
-
-    if ai_message is None:
-        ai_message = "I couldn't generate a response."
-
-    # display assistant response
     with st.chat_message("assistant"):
-        st.markdown(ai_message)
 
-    # save to history
-    st.session_state.chat_history.append(("assistant", ai_message))
+        # ── Step 1: Routing + Retrieval ──
+        with st.status("⬡  Routing query through agent graph...", expanded=False) as status:
+            ui_log("Graph invoked — routing query")
+
+            result = app.invoke({
+                "messages": [HumanMessage(content=prompt)]
+            })
+
+            status.update(label="✅  Graph complete", state="complete")
+            ui_log("Graph completed")
+
+        # ── Step 2: Extract context ──
+        context = ""
+        retrieved = False
+
+        for msg in result["messages"]:
+            if hasattr(msg, "type") and msg.type == "tool":
+                raw = msg.content
+                try:
+                    import ast
+                    parsed = ast.literal_eval(raw)
+                    context = parsed.get("text", "")
+                    num_chunks = len(parsed.get("chunks", []))
+                    retrieved = True
+                    st.session_state.retrieval_count += 1
+                    ui_log(f"Retrieval triggered — {num_chunks} chunks fetched")
+                    ui_log(f"Context length: {len(context)} chars")
+                except Exception:
+                    context = raw
+                    retrieved = True
+                    st.session_state.retrieval_count += 1
+                    ui_log(f"Retrieval triggered — context length: {len(context)} chars")
+                break
+
+        if not retrieved:
+            ui_log("No retrieval — LLM answering directly")
+
+        # ── Step 3: Stream answer ──
+        if context:
+            from agent.generate_answer import GENERATE_PROMPT
+            stream_prompt = GENERATE_PROMPT.format(
+                question=prompt,
+                context=context[:1200]
+            )
+            ui_log("Streaming answer from retrieved context...")
+            ai_message = st.write_stream(
+                chunk.content
+                for chunk in streaming_llm.stream(stream_prompt)
+                if chunk.content
+            )
+        else:
+            ui_log("Streaming direct answer...")
+            ai_message = st.write_stream(
+                chunk.content
+                for chunk in streaming_llm.stream(prompt)
+                if chunk.content
+            )
+
+        ui_log("Answer complete")
+        render_logs()
+
+    st.session_state.chat_history.append(
+        ("assistant", ai_message or "I couldn't generate a response.")
+    )

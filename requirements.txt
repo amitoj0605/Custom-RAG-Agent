@@ -1,0 +1,12 @@
+langchain
+langchain-ollama
+langchain-community
+langchain-text-splitters
+langchain-core
+langgraph
+faiss-cpu
+numpy
+streamlit
+beautifulsoup4
+pypdf
+tiktoken

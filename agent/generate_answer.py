@@ -2,9 +2,12 @@ import time
 from utils.logger import log
 from langchain_ollama import ChatOllama
 
+# Used only as a fallback (non-streaming path).
+# Streaming is handled directly in chat_app.py for faster perceived speed.
 response_model = ChatOllama(
-    model="qwen2.5",
-    temperature=0
+    model="qwen2.5:1.5b",
+    temperature=0,
+    num_predict=300,
 )
 
 GENERATE_PROMPT = (
@@ -31,8 +34,8 @@ def generate_answer(state):
     # last message = retriever output
     context = messages[-1].content
 
-    # limit context size for faster generation
-    context = context[:800]
+    # 2000 chars: enough context for quality answers without overloading the model
+    context = context[:2000]
 
     log(f"Context length: {len(context)} characters")
 

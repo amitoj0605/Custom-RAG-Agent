@@ -8,6 +8,9 @@ from embeddings.ollama_embeddings import EmbeddingService
 from utils.logger import log
 
 
+# Module-level singletons — loaded once when the module is first imported.
+# Streamlit's @st.cache_resource in chat_app.py ensures the graph (and
+# therefore this module) is only imported once per server session.
 embedding_service = EmbeddingService()
 retriever = FaissRetriever(embedding_service)
 
@@ -22,7 +25,8 @@ def retriever_tool(query: str):
 
     start = time.time()
 
-    docs = retriever.retrieve(query, top_k=2)
+    # top_k=3: good balance — enough context, minimal embedding overhead
+    docs = retriever.retrieve(query, top_k=3)
 
     retrieval_time = time.time() - start
 
@@ -33,7 +37,8 @@ def retriever_tool(query: str):
 
     for i, doc in enumerate(docs):
 
-        text = " ".join(doc.page_content.split())[:400]
+        # 600 chars per chunk × 3 chunks = ~1800 chars total fed to generate_answer
+        text = " ".join(doc.page_content.split())[:600]
 
         log(f"Chunk {i+1} retrieved")
 

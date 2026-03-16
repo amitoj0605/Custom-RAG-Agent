@@ -5,10 +5,13 @@ from langchain_core.messages import SystemMessage
 from agent.retriever_tool import retriever_tool
 
 
-# Initialize LLM
+# 3b is used ONLY for routing — it's much better at tool calling than 1.5b.
+# Answer generation still uses 1.5b so overall speed stays fast.
+# num_predict=100 is enough — routing just needs to emit a tool call or short reply.
 response_model = ChatOllama(
-    model="qwen2.5:7b",
-    temperature=0
+    model="qwen2.5:3b",
+    temperature=0,
+    num_predict=100,
 )
 
 
@@ -19,20 +22,17 @@ def generate_query_or_respond(state: MessagesState):
 
     system_prompt = SystemMessage(
         content=(
-            "You are an AI assistant with access to a document retrieval tool.\n"
-            "If the user asks about information that may exist in documents, "
-            "use the retriever_tool to search for relevant information.\n"
-            "If the question is general or conversational, respond directly."
+            "You are an AI assistant with a retriever_tool to search a knowledge base.\n"
+            "ALWAYS call retriever_tool for ANY question about AI, agents, RAG, "
+            "agentic AI, generative AI, or any factual topic.\n"
+            "Only respond directly for greetings or purely conversational messages."
         )
     )
 
-    # Add system instruction
     messages = [system_prompt] + state["messages"]
 
-    # Bind tool
     model_with_tools = response_model.bind_tools([retriever_tool])
 
-    # Invoke model
     response = model_with_tools.invoke(messages)
 
     return {"messages": [response]}
